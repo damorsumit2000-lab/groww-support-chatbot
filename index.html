@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Groww Support Chatbot</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+    }
+    
+    .chat-container {
+      width: 100%;
+      max-width: 700px;
+      height: 90vh;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .chat-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px;
+      text-align: center;
+    }
+    
+    .chat-header h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+    
+    .chat-header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    
+    .msg {
+      margin: 12px 0;
+      display: flex;
+      animation: fadeIn 0.3s;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .msg.user {
+      justify-content: flex-end;
+    }
+    
+    .msg-content {
+      max-width: 75%;
+      padding: 12px 18px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      line-height: 1.5;
+      font-size: 15px;
+    }
+    
+    .msg.user .msg-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .msg.bot .msg-content {
+      background: white;
+      color: #333;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .input-container {
+      display: flex;
+      padding: 20px;
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      gap: 10px;
+    }
+    
+    #input {
+      flex: 1;
+      padding: 12px 18px;
+      border: 2px solid #e0e0e0;
+      border-radius: 25px;
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    
+    #input:focus {
+      border-color: #667eea;
+    }
+    
+    #send {
+      padding: 12px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: transform 0.2s;
+    }
+    
+    #send:hover {
+      transform: translateY(-2px);
+    }
+    
+    #send:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h1>🤖 Groww Support Assistant</h1>
+      <p>Ask me anything about Groww services</p>
+    </div>
+    
+    <div id="messages"></div>
+    
+    <div class="input-container">
+      <input id="input" type="text" placeholder="Type your question here..." autocomplete="off">
+      <button id="send">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const knowledgeBase = `
+REDEEM: Open Groww app > Mutual Funds > Dashboard > Select fund > Redeem. Enter amount or choose Redeem All. You'll get OTP. Money in bank within 3-4 working days.
+
+MARKET TIMINGS: Stocks 9:15 AM - 3:30 PM. Check https://groww.in/p/stock-market-timings
+
+DEPOSIT FAILED: Try different payment method. If amount deducted, refund in 4-5 working days.
+
+UPPER CIRCUIT: No sellers available in market. Buy order executes once share is out of upper circuit.
+
+ACCOUNT DELETE: Deletion completed within 24-48 hours. Can create new account with same PAN, email, mobile after that.
+
+WALLET TRANSACTIONS: Groww app > profile > wallet > all transactions
+
+SETTLEMENT: Stock settlement takes T+1 working day. Amount settled by 10 PM in Groww balance.
+
+WITHDRAWAL: Instant withdrawal 9:30 AM - 4:00 PM. After 4 PM processed next day.
+
+BTST (Buy Today Sell Tomorrow): Amount released by 9 PM same day. Can withdraw by 10 AM next day.
+
+IPO: Allotment on lottery basis. Amount unblocked before mandate end date if not allotted.
+
+SIP CANCELLATION: Takes 7 working days to complete.
+
+REKYC: Complete from https://groww.in/onboarding/data-collection?context=REKYC. Click after an hour. Can invest in mutual funds within 3-4 working days.
+
+COMMODITY ACTIVATION: Groww app → FnO → Explore → Activate Commodity
+
+FNO DEACTIVATION: Takes 24-48 hours to complete.
+
+BENEFICIARY DETAILS:
+Name: AXIS BANK
+Account: GROW08792756460
+IFSC: UTIB0CCH274
+Type: Current
+Beneficiary: Groww Serv/Next Billion Technology
+
+CONTACT SUPPORT: +91-9108800000 (24/7 available)
+
+NEGATIVE BALANCE: Add money to make balance positive. Charges deducted during settlement can make balance negative.
+
+PLEDGE: Pledge request takes 24 hours to process. To unpledge: Profile > Groww Balance > Pledged Balance > Select stock > Unpledge.
+
+MTF (Margin Trading): Interest rate 14.95% per annum. Can buy with up to 80% broker margin (depends on haircut).
+
+BROKERAGE: 0.1% or ₹20 whichever is lower for stocks. ₹20 per order for FNO. Minimum ₹5 per executed stock order.
+
+DP CHARGES: Charged per ISIN on delivery sell orders. Below ₹100: ₹3.25 + GST. Above ₹100: ₹15 + GST (Groww) and ₹3.25 + GST (Depository).
+`;
+
+    const m = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    
+    function addMsg(type, text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'msg ' + type;
+      
+      const content = document.createElement('div');
+      content.className = 'msg-content';
+      content.textContent = text;
+      
+      msgDiv.appendChild(content);
+      m.appendChild(msgDiv);
+      m.scrollTop = m.scrollHeight;
+    }
+    
+    addMsg('bot', 'Hello! I\\'m your Groww Support Assistant. Ask me about redemption, IPO, SIP, withdrawal, market timings, or any other Groww service!');
+    
+    async function getResponse(question) {
+      try {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer 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',
+            'HTTP-Referer': window.location.href,
+          },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-3.2-3b-instruct:free',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a helpful Groww customer support assistant. Answer questions clearly and concisely based on this knowledge base:\\n\\n' + knowledgeBase + '\\n\\nIf question not in knowledge base, say you don\\'t have that info and suggest calling +91-9108800000.'
+              },
+              {
+                role: 'user',
+                content: question
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 400
+          })
+        });
+        
+        const data = await response.json();
+        return data.choices[0].message.content;
+      } catch (error) {
+        return 'Sorry, I\\'m having trouble connecting. Please try again or contact Groww support at +91-9108800000.';
+      }
+    }
+    
+    async function handleSend() {
+      const question = input.value.trim();
+      if (!question) return;
+      
+      addMsg('user', question);
+      input.value = '';
+      sendBtn.disabled = true;
+      
+      addMsg('bot', 'Typing...');
+      const response = await getResponse(question);
+      
+      m.removeChild(m.lastChild);
+      addMsg('bot', response);
+      sendBtn.disabled = false;
+      input.focus();
+    }
+    
+    sendBtn.addEventListener('click', handleSend);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleSend();
+    });
+    
+    input.focus();
+  </script>
+</body>
+</html>
