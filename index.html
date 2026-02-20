@@ -56,6 +56,12 @@
     .message {
       margin: 12px 0;
       display: flex;
+      animation: fadeIn 0.3s;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     
     .message.user {
@@ -67,6 +73,7 @@
       padding: 10px 15px;
       border-radius: 15px;
       line-height: 1.5;
+      white-space: pre-wrap;
     }
     
     .message.user .bubble {
@@ -78,6 +85,37 @@
       background: white;
       color: #333;
       border: 1px solid #ddd;
+    }
+    
+    .typing {
+      display: flex;
+      gap: 5px;
+      padding: 10px 15px;
+      background: white;
+      border-radius: 15px;
+      width: fit-content;
+      border: 1px solid #ddd;
+    }
+    
+    .typing span {
+      width: 8px;
+      height: 8px;
+      background: #667eea;
+      border-radius: 50%;
+      animation: typing 1.4s infinite;
+    }
+    
+    .typing span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+    
+    .typing span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+    
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-10px); }
     }
     
     .input-area {
@@ -109,14 +147,38 @@
       border-radius: 20px;
       cursor: pointer;
       font-weight: bold;
+      transition: all 0.3s;
     }
     
     #sendBtn:hover {
       background: #5568d3;
+      transform: scale(1.05);
     }
     
     #sendBtn:active {
       transform: scale(0.95);
+    }
+    
+    #sendBtn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .error {
+      background: #fee;
+      color: #c00;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border: 1px solid #fcc;
+    }
+    
+    .model-info {
+      font-size: 11px;
+      color: #888;
+      margin-top: 5px;
+      font-style: italic;
     }
   </style>
 </head>
@@ -124,49 +186,28 @@
   <div class="container">
     <div class="header">
       <h1>🤖 Groww Support Bot</h1>
-      <p>Ask me anything about Groww</p>
+      <p>AI-powered support trained on comprehensive documentation</p>
     </div>
     
     <div id="chat"></div>
     
     <div class="input-area">
-      <input type="text" id="userInput" placeholder="Type your question...">
+      <input type="text" id="userInput" placeholder="Ask me anything about Groww...">
       <button id="sendBtn">Send</button>
     </div>
   </div>
 
   <script>
-    console.log('Script loaded');
+    const API_URL = 'http://localhost:3000/api'; // Update with your backend URL
     
     const chat = document.getElementById('chat');
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
     
-    // Knowledge base
-    const knowledge = {
-      'redeem': 'To redeem: Open Groww app > Mutual Funds > Dashboard > Select fund > Redeem. Enter amount or Redeem All. Get OTP on phone/email. Confirm. Money in bank within 3-4 working days.',
-      'market timing': 'Market Timings: Stocks 9:15 AM - 3:30 PM. Commodity timings at https://groww.in/p/commodity-market-timing',
-      'withdraw': 'Instant withdrawal: 9:30 AM - 4:00 PM. After 4 PM processed next day. Check: Groww app > profile > wallet > all transactions',
-      'ipo': 'IPO allotment is lottery basis. If not allotted, amount unblocked before mandate end date. Check mandate end date in UPI app.',
-      'sip cancel': 'SIP cancellation takes 7 working days. Can restart SIP after 7 days.',
-      'settlement': 'Stock settlement takes T+1 working day. Amount settled by 10 PM in Groww balance.',
-      'btst': 'BTST (Buy Today Sell Tomorrow) amount released by 9 PM same day. Can withdraw by 10 AM next day.',
-      'wallet': 'Check wallet: Groww app > profile > wallet > all transactions',
-      'delete account': 'Account deletion within 24-48 hours. Can create new account with same PAN/email/mobile after deletion.',
-      'upper circuit': 'Upper circuit means no sellers available, only buyers. Buy order executes once share out of upper circuit.',
-      'deposit failed': 'Try different payment method. If amount deducted, refund within 4-5 working days.',
-      'support': 'Contact Groww Support: +91-9108800000 (Available 24/7)',
-      'rekyc': 'Complete ReKYC from: https://groww.in/onboarding/data-collection?context=REKYC (Click after 1 hour). Can invest in MF within 3-4 working days.',
-      'commodity': 'Activate commodity: Groww app > FnO > Explore > Activate Commodity. Takes 24-48 hours.',
-      'fno': 'FNO deactivation takes 24-48 hours. Pause from: app > profile > Settings > FnO Pause',
-      'pledge': 'Pledge takes 24 hours. Unpledge: Profile > Groww Balance > Pledged Balance > Select stock > Unpledge',
-      'mtf': 'MTF interest: 14.95% per annum. Up to 80% broker margin based on haircut.',
-      'brokerage': 'Stocks: 0.1% or ₹20 whichever lower. FNO: ₹20 per order. Minimum ₹5 per stock order.',
-      'negative balance': 'Add money to make balance positive. Charges deducted during settlement can make balance negative.'
-    };
+    let currentModel = 'Unknown';
     
-    function addMsg(type, text) {
-      console.log('Adding message:', type, text);
+    // Add message to chat
+    function addMsg(type, text, modelInfo = null) {
       const msgDiv = document.createElement('div');
       msgDiv.className = 'message ' + type;
       
@@ -174,63 +215,154 @@
       bubble.className = 'bubble';
       bubble.textContent = text;
       
+      if (modelInfo && type === 'bot') {
+        const info = document.createElement('div');
+        info.className = 'model-info';
+        info.textContent = `Model: ${modelInfo.model} • Style: ${modelInfo.style}`;
+        bubble.appendChild(info);
+      }
+      
       msgDiv.appendChild(bubble);
       chat.appendChild(msgDiv);
       chat.scrollTop = chat.scrollHeight;
     }
     
-    function findAnswer(question) {
-      const q = question.toLowerCase();
+    // Show typing indicator
+    function showTyping() {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message bot';
+      msgDiv.id = 'typing-indicator';
       
-      for (let key in knowledge) {
-        if (q.includes(key)) {
-          return knowledge[key];
-        }
-      }
+      const typing = document.createElement('div');
+      typing.className = 'typing';
+      typing.innerHTML = '<span></span><span></span><span></span>';
       
-      return 'I can help with: Redemption, IPO, SIP, Withdrawal, Market Timings, Settlement, BTST, Wallet, Account Delete, Upper Circuit, Commodity, FNO, Pledge, MTF, Brokerage. Or call support: +91-9108800000';
+      msgDiv.appendChild(typing);
+      chat.appendChild(msgDiv);
+      chat.scrollTop = chat.scrollHeight;
     }
     
-    function handleSend() {
-      console.log('Send clicked');
+    // Remove typing indicator
+    function hideTyping() {
+      const typing = document.getElementById('typing-indicator');
+      if (typing) typing.remove();
+    }
+    
+    // Show error message
+    function showError(message) {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error';
+      errorDiv.textContent = '⚠️ ' + message;
+      chat.appendChild(errorDiv);
+      chat.scrollTop = chat.scrollHeight;
+    }
+    
+    // Send message to backend
+    async function sendMessage(question) {
+      try {
+        const response = await fetch(`${API_URL}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ question })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to get response');
+        }
+        
+        const data = await response.json();
+        return data;
+        
+      } catch (error) {
+        throw error;
+      }
+    }
+    
+    // Handle send
+    async function handleSend() {
       const question = userInput.value.trim();
       
-      if (!question) {
-        console.log('Empty input');
-        return;
-      }
+      if (!question) return;
       
-      console.log('Question:', question);
+      // Add user message
       addMsg('user', question);
       userInput.value = '';
+      sendBtn.disabled = true;
       
-      setTimeout(() => {
-        const answer = findAnswer(question);
-        addMsg('bot', answer);
-      }, 500);
+      // Show typing
+      showTyping();
+      
+      try {
+        // Get AI response
+        const response = await sendMessage(question);
+        
+        // Hide typing
+        hideTyping();
+        
+        // Add bot response
+        addMsg('bot', response.answer, {
+          model: response.model,
+          style: response.style
+        });
+        
+      } catch (error) {
+        hideTyping();
+        
+        if (error.message.includes('No documents trained')) {
+          showError('The chatbot hasn\'t been trained yet. Please ask an admin to upload training documents.');
+        } else if (error.message.includes('Failed to fetch')) {
+          showError('Cannot connect to server. Please make sure the backend is running.');
+        } else {
+          showError(error.message);
+        }
+      } finally {
+        sendBtn.disabled = false;
+        userInput.focus();
+      }
     }
     
-    // Welcome message
-    addMsg('bot', 'Hello! Ask me about Groww - redemption, IPO, SIP, withdrawal, market timings, and more!');
+    // Load settings
+    async function loadSettings() {
+      try {
+        const response = await fetch(`${API_URL}/settings`);
+        if (response.ok) {
+          const settings = await response.json();
+          currentModel = settings.model;
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    }
+    
+    // Check server status
+    async function checkServer() {
+      try {
+        const response = await fetch(`${API_URL}/health`);
+        if (response.ok) {
+          addMsg('bot', 'Hello! I\'m your AI-powered Groww support assistant. I\'ve been trained on comprehensive documentation to provide detailed answers. Ask me anything about Groww!');
+          loadSettings();
+        }
+      } catch (error) {
+        showError('Cannot connect to server. Please start the backend server first.');
+      }
+    }
     
     // Event listeners
-    sendBtn.addEventListener('click', function(e) {
-      console.log('Button clicked');
-      e.preventDefault();
-      handleSend();
-    });
+    sendBtn.addEventListener('click', handleSend);
     
-    userInput.addEventListener('keypress', function(e) {
+    userInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         handleSend();
       }
     });
     
-    // Focus input
+    // Initialize
     userInput.focus();
-    
-    console.log('All event listeners attached');
+    checkServer();
   </script>
 </body>
 </html>
